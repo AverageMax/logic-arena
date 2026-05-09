@@ -10,10 +10,14 @@ import { HeroSection }          from "./components/sections/HeroSection";
 import { StatCardsSection }     from "./components/sections/StatCardsSection";
 import { AnalyticsSection }     from "./components/sections/AnalyticsSection";
 import { MatchHistorySection }  from "./components/sections/MatchHistorySection";
+import { ProfileErrorState }    from "./components/sections/ProfileErrorState";
+
+type ErrorKind = "NOT_FOUND" | "NETWORK" | "UNKNOWN" | null;
 
 // ─── Fallback for guest / unauthenticated visitors ───────────────────────────
 function makeAnonProfile(): ProfileData {
   return {
+    id:           "",
     username:     "GUEST",
     avatarUrl:    null,
     rank:         0,
@@ -33,26 +37,31 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [errKind, setErrKind] = useState<ErrorKind>(null);
   const [isGuest, setIsGuest] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await apiClient.get("/users/profile");
-        setProfile(res.data);
-      } catch (err: unknown) {
-        const e = err as { response?: { status?: number }; message?: string };
-        if (e.response?.status === 401) {
-          setIsGuest(true);
-          setProfile(makeAnonProfile());
-        } else {
-          setError(e.message ?? "Unknown error");
-        }
-      } finally {
-        setLoading(false);
+  const load = async () => {
+    setLoading(true);
+    setErrKind(null);
+    try {
+      const res = await apiClient.get("/users/profile");
+      setProfile(res.data);
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number }; message?: string };
+      if (e.response?.status === 401) {
+        setIsGuest(true);
+        setProfile(makeAnonProfile());
+      } else if (e.message?.includes("Network") || e.message?.includes("timeout")) {
+        setErrKind("NETWORK");
+      } else {
+        setErrKind("UNKNOWN");
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -71,7 +80,7 @@ export default function ProfilePage() {
     return STAT_COLORS[dominantKey];
   }, [dominantKey]);
 
-  const username = loading ? "LOADING…" : error ? "ERROR" : profile?.username ?? "UNKNOWN";
+  const username = loading ? "LOADING…" : errKind ? "ERROR" : profile?.username ?? "UNKNOWN";
 
   return (
     <>
@@ -94,14 +103,18 @@ export default function ProfilePage() {
         />
 
         {/* Corner glow accents */}
-        <div
-          className="fixed top-0 right-0 pointer-events-none z-0 w-[500px] h-[500px] rounded-full"
-          style={{ background: `radial-gradient(circle, ${profileColor}08 0%, transparent 70%)` }}
-        />
-        <div
-          className="fixed bottom-0 left-0 pointer-events-none z-0 w-[400px] h-[400px] rounded-full"
-          style={{ background: `radial-gradient(circle, rgba(var(--accent-rgb),0.04) 0%, transparent 70%)` }}
-        />
+        {!errKind && (
+          <>
+            <div
+              className="fixed top-0 right-0 pointer-events-none z-0 w-[500px] h-[500px] rounded-full"
+              style={{ background: `radial-gradient(circle, ${profileColor}08 0%, transparent 70%)` }}
+            />
+            <div
+              className="fixed bottom-0 left-0 pointer-events-none z-0 w-[400px] h-[400px] rounded-full"
+              style={{ background: `radial-gradient(circle, rgba(var(--accent-rgb),0.04) 0%, transparent 70%)` }}
+            />
+          </>
+        )}
 
         {/* Content */}
         <div
@@ -111,31 +124,22 @@ export default function ProfilePage() {
             padding:  isMobile ? "24px 16px 0" : "48px 32px 120px",
           }}
         >
-          <HeroSection
-            loading={loading}
-            profile={profile}
-            isMobile={isMobile}
-            profileColor={profileColor}
-            dominantKey={dominantKey}
-            username={username}
-          />
-
-          {/* Error banner */}
-          {error && (
-            <div
-              className="rounded-lg p-4 text-[11px] tracking-[0.12em] mb-8 font-mono"
-              style={{
-                background: "rgba(239,68,68,0.08)",
-                border:     "1px solid rgba(239,68,68,0.25)",
-                color:      "#fca5a5",
-              }}
-            >
-              [ERR] Failed to load profile: {error}
-            </div>
-          )}
-
-          {!error && (
+          {errKind ? (
+            <ProfileErrorState
+              isMobile={isMobile}
+              errorType={errKind}
+              onRetry={load}
+            />
+          ) : (
             <>
+              <HeroSection
+                loading={loading}
+                profile={profile}
+                isMobile={isMobile}
+                profileColor={profileColor}
+                dominantKey={dominantKey}
+                username={username}
+              />
               <StatCardsSection loading={loading} profile={profile} isMobile={isMobile} />
               <AnalyticsSection
                 loading={loading}
