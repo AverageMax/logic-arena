@@ -5,8 +5,7 @@ export interface Suggestion {
 }
 
 export interface CaretPosition {
-    bottom?: number | 'auto';
-    top?: number | 'auto';
+    bottom: number;
     left: number;
 }
 
