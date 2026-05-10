@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bot, Send, X, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api-client';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { Components } from 'react-markdown';
 
 interface ChatMessage {
@@ -81,7 +82,9 @@ function TypingIndicator() {
   );
 }
 
-export function AiTutor({ isMobile = false }: { isMobile?: boolean }) {
+export function AiTutor({ isMobile: isMobileProp }: { isMobile?: boolean }) {
+  const isMobileDefault = useMediaQuery('(max-width: 768px)');
+  const isMobile = isMobileProp ?? isMobileDefault;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
