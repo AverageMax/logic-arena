@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { requestAdminWithRetry } from "./adminRequest";
 
-const REFRESH_INTERVAL_MS = 60_000;
+const REFRESH_INTERVAL_MS = 120_000;
 
 export interface OverviewStats {
   totalUsers: number;
